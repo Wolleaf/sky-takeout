@@ -6,3 +6,8 @@ sky:
     database: sky_take_out
     username: root
     password: lly20030828
+  alioss:
+    endpoint: oss-cn-shenzhen.aliyuncs.com
+    access-key-id: LTAI5tLaNVQMaiAuREhwzqDr
+    access-key-secret: KqixX3Mg7572X1jUrE96FopqllQDgw
+    bucket-name: sky-takeout-wolleaf
