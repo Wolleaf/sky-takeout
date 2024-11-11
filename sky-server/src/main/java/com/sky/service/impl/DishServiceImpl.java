@@ -12,6 +12,7 @@ import com.sky.exception.DeletionNotAllowedException;
 import com.sky.mapper.DishFlavorMapper;
 import com.sky.mapper.DishMapper;
 import com.sky.mapper.SetmealDishMapper;
+import com.sky.mapper.SetmealMapper;
 import com.sky.result.PageResult;
 import com.sky.service.DishService;
 import com.sky.vo.DishVO;
@@ -33,12 +34,15 @@ public class DishServiceImpl implements DishService {
     private DishMapper dishMapper;
     private DishFlavorMapper dishFlavorMapper;
     private SetmealDishMapper setmealDishMapper;
+    private SetmealMapper setmealMapper;
 
     @Autowired
-    public DishServiceImpl(DishMapper dishMapper, DishFlavorMapper dishFlavorMapper, SetmealDishMapper setmealDishMapper) {
+    public DishServiceImpl(DishMapper dishMapper, DishFlavorMapper dishFlavorMapper,
+                           SetmealDishMapper setmealDishMapper, SetmealMapper setmealMapper) {
         this.dishMapper = dishMapper;
         this.dishFlavorMapper = dishFlavorMapper;
         this.setmealDishMapper = setmealDishMapper;
+        this.setmealMapper = setmealMapper;
     }
 
     /**
@@ -134,5 +138,25 @@ public class DishServiceImpl implements DishService {
         Dish dish = new Dish();
         BeanUtils.copyProperties(dishDTO, dish);
         dishMapper.updateDish(dish);
+    }
+
+    @Override
+    @Transactional
+    public void updateStatusWithSeatmeal(Integer status, Long id) {
+        // 更新菜品状态
+        Dish dish = Dish.builder()
+                .id(id)
+                .status(status)
+                .build();
+        dishMapper.updateDish(dish);
+        // 更新对应套餐状态
+        if (status == StatusConstant.DISABLE) {
+            setmealMapper.updateStatusByDishId(id, StatusConstant.DISABLE);
+        }
+    }
+
+    @Override
+    public List<Dish> getDishByCategoryId(Long categoryId) {
+        return dishMapper.getDishByCategoryId(categoryId);
     }
 }

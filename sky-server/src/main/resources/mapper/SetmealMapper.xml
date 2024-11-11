@@ -3,4 +3,14 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
 <mapper namespace="com.sky.mapper.SetmealMapper">
 
+    <update id="updateStatusByDishId">
+        update setmeal set status = #{status} where id in (
+            select setmeal_id from setmeal_dish where dish_id = #{dishId})
+    </update>
+
+    <insert id="insertSetmeal" useGeneratedKeys="true" keyProperty="id">
+        insert into setmeal (name, category_id, price, status, description, image, create_time, update_time, create_user, update_user)
+        values (#{name}, #{categoryId}, #{price}, #{status}, #{description}, #{image}, #{createTime}, #{updateTime}, #{createUser}, #{updateUser})
+    </insert>
+
 </mapper>
