@@ -59,4 +59,14 @@
         where id = #{id}
     </update>
 
+    <select id="countStopStatusBySetmealId" resultType="java.lang.Integer">
+        select count(*)
+        from dish
+        where id in (
+            select dish_id
+            from setmeal_dish
+            where setmeal_id = #{setmealId}
+        ) and status = 0;
+    </select>
+
 </mapper>
