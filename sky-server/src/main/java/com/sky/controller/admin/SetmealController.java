@@ -90,6 +90,7 @@ public class SetmealController {
     @ApiOperation("修改套餐")
     @PutMapping
     public Result updateSetmeal(@RequestBody SetmealDTO setmealDTO) {
+        log.info("修改套餐，参数为：{}", setmealDTO);
         setmealService.updateSetmealWithDishes(setmealDTO);
         return Result.success();
     }
@@ -103,6 +104,7 @@ public class SetmealController {
     @ApiOperation("启用禁用套餐")
     @PostMapping("/status/{status}")
     public Result updateStatus(@PathVariable Integer status, Long id) {
+        log.info("启用禁用套餐，状态为：{}, 套餐id为：{}", status, id);
         setmealService.updateStatus(status, id);
         return Result.success();
     }

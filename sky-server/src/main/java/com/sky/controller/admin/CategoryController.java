@@ -104,6 +104,7 @@ public class CategoryController {
     @ApiOperation("删除分类")
     @DeleteMapping
     public Result deleteById(Long id) {
+        log.info("删除分类，分类id为：{}", id);
         categoryService.deleteById(id);
         return Result.success();
     }
