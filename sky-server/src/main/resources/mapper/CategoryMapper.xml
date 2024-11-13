@@ -39,4 +39,12 @@
         </where>
         order by update_time desc
     </select>
+    <select id="getByType" resultType="com.sky.entity.Category">
+        select * from category
+        <where>
+            <if test="type != null">
+                type = #{type}
+            </if>
+        </where>
+    </select>
 </mapper>
