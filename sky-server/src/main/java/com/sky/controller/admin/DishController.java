@@ -11,9 +11,12 @@ import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Set;
 
 /**
  * 菜品相关接口
@@ -25,10 +28,12 @@ import java.util.List;
 public class DishController {
 
     private DishService dishService;
+    private RedisTemplate<String, Object> redisTemplate;
 
     @Autowired
-    public DishController(DishService dishService) {
+    public DishController(DishService dishService, RedisTemplate redisTemplate) {
         this.dishService = dishService;
+        this.redisTemplate = redisTemplate;
     }
 
     /**
@@ -38,9 +43,11 @@ public class DishController {
      */
     @ApiOperation("新增菜品")
     @PostMapping
+    @CacheEvict(cacheNames = "dishCache", key = "#dishDTO.categoryId")
     public Result addDish(@RequestBody DishDTO dishDTO) {
         log.info("新增菜品，参数：{}", dishDTO);
         dishService.addDishWithFlavor(dishDTO);
+
         return Result.success();
     }
 
@@ -64,6 +71,7 @@ public class DishController {
      */
     @ApiOperation("批量删除菜品")
     @DeleteMapping
+    @CacheEvict(cacheNames = "dishCache", allEntries = true)
     public Result deleteBatch(@RequestParam List<Long> ids) {
         log.info("批量删除菜品，参数：{}", ids);
         dishService.deleteBatch(ids);
@@ -90,6 +98,7 @@ public class DishController {
      */
     @ApiOperation("修改菜品")
     @PutMapping
+    @CacheEvict(cacheNames = "dishCache", allEntries = true)
     public Result updateDishWithFlavor(@RequestBody DishDTO dishDTO) {
         log.info("修改菜品，参数：{}", dishDTO);
         dishService.updateDishWithFlavor(dishDTO);
@@ -104,10 +113,11 @@ public class DishController {
      */
     @ApiOperation("启用禁用菜品")
     @PostMapping("/status/{status}")
+    @CacheEvict(cacheNames = "dishCache", allEntries = true)
     public Result updateStatusWithSeatmeal(@PathVariable Integer status, Long id) {
     	log.info("启用禁用菜品，参数：{}", status);
     	dishService.updateStatusWithSeatmeal(status, id);
-    	return Result.success();
+        return Result.success();
     }
 
     /**
