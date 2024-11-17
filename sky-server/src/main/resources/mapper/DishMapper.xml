@@ -18,7 +18,7 @@
                 and d.status = #{status}
             </if>
         </where>
-        order by d.update_time desc
+        order by d.create_time desc
     </select>
 
     <delete id="deleteBatch">
