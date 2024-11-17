@@ -3,11 +3,8 @@ package com.sky.service.impl;
 import com.alibaba.fastjson.JSONObject;
 import com.github.pagehelper.Page;
 import com.github.pagehelper.PageHelper;
-import com.sky.constant.MessageConstant;
 import com.sky.context.BaseContext;
-import com.sky.dto.OrdersPageQueryDTO;
-import com.sky.dto.OrdersPaymentDTO;
-import com.sky.dto.OrdersSubmitDTO;
+import com.sky.dto.*;
 import com.sky.entity.*;
 import com.sky.exception.OrderBusinessException;
 import com.sky.mapper.*;
@@ -15,6 +12,7 @@ import com.sky.result.PageResult;
 import com.sky.service.OrderService;
 import com.sky.utils.WeChatPayUtil;
 import com.sky.vo.OrderPaymentVO;
+import com.sky.vo.OrderStatisticsVO;
 import com.sky.vo.OrderSubmitVO;
 import com.sky.vo.OrderVO;
 import org.springframework.beans.BeanUtils;
@@ -166,7 +164,7 @@ public class OrderServiceImpl implements OrderService {
     public PageResult queryPage4User(OrdersPageQueryDTO ordersPageQueryDTO) {
         PageHelper.startPage(ordersPageQueryDTO.getPage(), ordersPageQueryDTO.getPageSize());
         ordersPageQueryDTO.setUserId(BaseContext.getCurrentId());
-        Page<Orders> page = orderMapper.pageQuery4User(ordersPageQueryDTO);
+        Page<Orders> page = orderMapper.pageQuery(ordersPageQueryDTO);
 
         List<OrderVO> orderVOList = new ArrayList<>(page.size());
         if (page != null && page.getTotal() > 0) {
@@ -222,5 +220,112 @@ public class OrderServiceImpl implements OrderService {
             shoppingCartList.add(shoppingCart);
         }
         shoppingCartMapper.insertBatch(shoppingCartList);
+    }
+
+    /**
+     * 管理员分页查询
+     * @param ordersPageQueryDTO
+     * @return
+     */
+    @Override
+    public PageResult queryPage4Admin(OrdersPageQueryDTO ordersPageQueryDTO) {
+        PageHelper.startPage(ordersPageQueryDTO.getPage(), ordersPageQueryDTO.getPageSize());
+        Page<Orders> page = orderMapper.pageQuery(ordersPageQueryDTO);
+        List<OrderVO> orderVOList = new ArrayList<>(page.size());
+        if (page != null && page.getTotal() > 0) {
+            for (Orders orders : page) {
+                List<OrderDetail> orderDetailList = orderDetailMapper.getByOrderId(orders.getId());
+                StringBuilder stringBuilder = new StringBuilder();
+                for (OrderDetail orderDetail : orderDetailList) {
+                    stringBuilder.append(orderDetail.getName()).append("*").append(orderDetail.getNumber()).append(";");
+                }
+
+                OrderVO orderVO = new OrderVO();
+                BeanUtils.copyProperties(orders, orderVO);
+                orderVO.setOrderDishes(stringBuilder.toString());
+                orderVOList.add(orderVO);
+            }
+        }
+        return new PageResult(page.getTotal(), orderVOList);
+    }
+
+    /**
+     * 订单统计
+     * @return
+     */
+    @Override
+    public OrderStatisticsVO statistics() {
+        Integer toBeConfirmed = orderMapper.countByStatus(Orders.TO_BE_CONFIRMED);
+        Integer confirmed = orderMapper.countByStatus(Orders.CONFIRMED);
+        Integer deliveryInProgress = orderMapper.countByStatus(Orders.DELIVERY_IN_PROGRESS);
+        OrderStatisticsVO orderStatisticsVO = OrderStatisticsVO.builder()
+                .confirmed(confirmed)
+                .deliveryInProgress(deliveryInProgress)
+                .toBeConfirmed(toBeConfirmed)
+                .build();
+        return orderStatisticsVO;
+    }
+
+    /**
+     * 接单
+     *
+     * @param ordersConfirmDTO
+     */
+    @Override
+    public void confirm(OrdersConfirmDTO ordersConfirmDTO) {
+        Orders orders = Orders.builder()
+                        .id(ordersConfirmDTO.getId())
+                        .status(Orders.CONFIRMED).build();
+        orderMapper.update(orders);
+    }
+
+    /**
+     * 拒单
+     * @param ordersRejectionDTO
+     */
+    @Override
+    public void reject(OrdersRejectionDTO ordersRejectionDTO) {
+        Orders orders = Orders.builder()
+                .id(ordersRejectionDTO.getId())
+                .rejectionReason(ordersRejectionDTO.getRejectionReason())
+                .status(Orders.CANCELLED).build();
+        orderMapper.update(orders);
+    }
+
+    /**
+     * 取消订单
+     * @param ordersCancelDTO
+     */
+    @Override
+    public void cancel(OrdersCancelDTO ordersCancelDTO) {
+        Orders orders = Orders.builder()
+                .id(ordersCancelDTO.getId())
+                .cancelReason(ordersCancelDTO.getCancelReason())
+                .status(Orders.CANCELLED).build();
+        orderMapper.update(orders);
+    }
+
+    /**
+     * 派送订单
+     * @param id
+     */
+    @Override
+    public void delivery(Long id) {
+        Orders orders = Orders.builder()
+                .id(id)
+                .status(Orders.DELIVERY_IN_PROGRESS).build();
+        orderMapper.update(orders);
+    }
+
+    /**
+     * 完成订单
+     * @param id
+     */
+    @Override
+    public void complete(Long id) {
+        Orders orders = Orders.builder()
+                .id(id)
+                .status(Orders.COMPLETED).build();
+        orderMapper.update(orders);
     }
 }

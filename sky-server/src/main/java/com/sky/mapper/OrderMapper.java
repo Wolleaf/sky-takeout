@@ -34,7 +34,7 @@ public interface OrderMapper {
      * @param ordersPageQueryDTO
      * @return
      */
-    Page<Orders> pageQuery4User(OrdersPageQueryDTO ordersPageQueryDTO);
+    Page<Orders> pageQuery(OrdersPageQueryDTO ordersPageQueryDTO);
 
     /**
      * 根据id查询订单
@@ -50,4 +50,12 @@ public interface OrderMapper {
      */
     @Update("update orders set status = 6 where id = #{id}")
     void cancelById(Long id);
+
+    /**
+     * 根据状态统计订单数量
+     * @param status
+     * @return
+     */
+    @Select("select count(*) from orders where status = #{status}")
+    Integer countByStatus(Integer status);
 }
