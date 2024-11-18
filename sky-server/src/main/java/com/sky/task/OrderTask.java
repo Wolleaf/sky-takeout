@@ -25,7 +25,7 @@ public class OrderTask {
     /**
      * 每分钟执行一次，处理超时订单
      */
-    @Scheduled(cron = "0 * * * * ? *")
+    @Scheduled(cron = "0 * * * * ?")
     public void updateTimeoutOrders() {
         List<Orders> orders = orderMapper.getByStatusAndLTTime(Orders.PENDING_PAYMENT, LocalDateTime.now().plusMinutes(-15));
 
@@ -42,7 +42,7 @@ public class OrderTask {
     /**
      * 每日01:00:00执行一次，处理前一天处于待派送状态的订单
      */
-    @Scheduled(cron = "0 0 1 * * ? *")
+    @Scheduled(cron = "0 0 1 * * ?")
     public void updateDeliveryOrders() {
         List<Orders> orders = orderMapper.getByStatusAndLTTime(Orders.DELIVERY_IN_PROGRESS,
                 LocalDateTime.now().plusMinutes(-60));
