@@ -288,6 +288,7 @@ public class OrderServiceImpl implements OrderService {
         Orders orders = Orders.builder()
                 .id(ordersRejectionDTO.getId())
                 .rejectionReason(ordersRejectionDTO.getRejectionReason())
+                .cancelTime(LocalDateTime.now())
                 .status(Orders.CANCELLED).build();
         orderMapper.update(orders);
     }
@@ -301,6 +302,7 @@ public class OrderServiceImpl implements OrderService {
         Orders orders = Orders.builder()
                 .id(ordersCancelDTO.getId())
                 .cancelReason(ordersCancelDTO.getCancelReason())
+                .cancelTime(LocalDateTime.now())
                 .status(Orders.CANCELLED).build();
         orderMapper.update(orders);
     }
