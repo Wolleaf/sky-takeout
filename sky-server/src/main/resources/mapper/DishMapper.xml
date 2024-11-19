@@ -62,11 +62,10 @@
     <select id="countStopStatusBySetmealId" resultType="java.lang.Integer">
         select count(*)
         from dish
-        where id in (
-            select dish_id
-            from setmeal_dish
-            where setmeal_id = #{setmealId}
-        ) and status = 0;
+        where id in (select dish_id
+                     from setmeal_dish
+                     where setmeal_id = #{setmealId})
+          and status = 0;
     </select>
     <select id="list" resultType="com.sky.entity.Dish">
         select * from dish
@@ -85,6 +84,18 @@
             </if>
             <if test="status != null">
                 and status = #{status}
+            </if>
+        </where>
+    </select>
+
+    <select id="countByMap" resultType="java.lang.Integer">
+        select count(id) from dish
+        <where>
+            <if test="status != null">
+                and status = #{status}
+            </if>
+            <if test="categoryId != null">
+                and category_id = #{categoryId}
             </if>
         </where>
     </select>

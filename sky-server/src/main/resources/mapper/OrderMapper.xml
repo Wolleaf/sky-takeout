@@ -6,11 +6,11 @@
         insert into orders (number, status, user_id, address_book_id, order_time, checkout_time, pay_method,
                             pay_status, amount, remark, phone, address, user_name, consignee, cancel_reason,
                             rejection_reason, cancel_time, estimated_delivery_time, delivery_status, delivery_time,
-                            pack_amount, tableware_number, tableware_status) values
-            (#{number},#{status},#{userId},#{addressBookId},#{orderTime},#{checkoutTime},#{payMethod},
-             #{payStatus},#{amount},#{remark},#{phone},#{address},#{userName},#{consignee},#{cancelReason},
-             #{rejectionReason},#{cancelTime},#{estimatedDeliveryTime},#{deliveryStatus},#{deliveryTime},
-             #{packAmount},#{tablewareNumber},#{tablewareStatus})
+                            pack_amount, tableware_number, tableware_status)
+        values (#{number}, #{status}, #{userId}, #{addressBookId}, #{orderTime}, #{checkoutTime}, #{payMethod},
+                #{payStatus}, #{amount}, #{remark}, #{phone}, #{address}, #{userName}, #{consignee}, #{cancelReason},
+                #{rejectionReason}, #{cancelTime}, #{estimatedDeliveryTime}, #{deliveryStatus}, #{deliveryTime},
+                #{packAmount}, #{tablewareNumber}, #{tablewareStatus})
     </insert>
 
     <update id="update" parameterType="com.sky.entity.Orders">
@@ -53,6 +53,143 @@
             <if test="status != null">and status = #{status}</if>
             <if test="beginTime != null">and order_time &gt;= #{beginTime}</if>
             <if test="endTime != null">and order_time &lt;= #{endTime}</if>
+        </where>
+    </select>
+
+    <select id="getTurnoverStatistics" resultType="com.sky.dto.TurnoverStatisticsDTO">
+        with
+            recursive
+            date_range(date_value) as (select #{begin} as date
+                                       union all
+                                       select date_add(date_value, interval 1 day)
+                                       from date_range
+                                       where date_value
+                                                 &lt; #{end}),
+            orders_left(order_time, amount) as (select date_format(orders.order_time, '%Y-%m-%d'), amount
+                                                from orders
+                                                where DATE_FORMAT(order_time, '%Y-%m-%d') &lt;= #{end}
+                                                  and DATE_FORMAT(order_time, '%Y-%m-%d') &gt;= #{begin}
+                                                  and status = #{status})
+
+        select date_value as 'date', ifnull(sum(amount), 0) as 'turnover'
+        from date_range
+                 left join orders_left
+                           on date_value = order_time
+        group by date_value
+        order by date_value;
+    </select>
+
+    <select id="getNewUserStatistics" resultType="com.sky.dto.NewUserStatisticsDTO">
+        with
+            recursive
+            date_range(date_value) as (select #{begin} as date_value
+                                       union all
+                                       select date_add(date_value, interval 1 day)
+                                       from date_range
+                                       where date_value &lt; #{end}),
+            total_user_amount as (select date_format(create_time, '%Y-%m-%d') as 'date', count(*) cnt
+                                  from user
+                                  group by date_format(create_time, '%Y-%m-%d'))
+
+        select date_value as 'date', ifnull(cnt, 0) as 'total'
+        from date_range
+                 left join total_user_amount
+                           on date_value = date
+    </select>
+
+    <select id="getTotalUserStatistics" resultType="com.sky.dto.TotalUserStatisticsDTO">
+        with
+            recursive
+            date_range(date_value) as (select #{begin} as date_value
+                                       union all
+                                       select date_add(date_value, interval 1 day)
+                                       from date_range
+                                       where date_value &lt; #{end}),
+            total_user_amount as (select date, sum(cnt) as 'cnt'
+                                  from (select date_format(create_time, '%Y-%m-%d') as 'date', count(*) cnt
+                                        from user
+                                        group by date_format(create_time, '%Y-%m-%d')
+                                        union all
+                                        select date_value as 'date', 0 as 'cnt'
+                                        from date_range) temp
+                                  group by date
+                                  order by date),
+            total_user as (select date,
+                                  ifnull(sum(cnt) over (order by date rows between unbounded preceding and current row),
+                                         0) as 'total'
+                           from total_user_amount)
+
+        select date, total
+        from total_user
+        where date &gt;= #{begin}
+          and date &lt;= #{end};
+    </select>
+
+    <select id="getOrderCountList" resultType="java.lang.Integer">
+        with
+        recursive
+        date_range(date_value) as (select #{begin} as date_value
+        union all
+        select date_add(date_value, interval 1 day)
+        from date_range
+        where date_value &lt; #{end}),
+        order_cnt as (select date_format(order_time, '%Y-%m-%d') as 'date', count(*) as 'cnt'
+        from orders
+        <where>
+            <if test="status != null">
+                and status = #{status}
+            </if>
+        </where>
+        group by date_format(order_time, '%Y-%m-%d')
+        order by date)
+
+        select ifnull(cnt, 0) as 'order_cnt'
+        from date_range
+        left join order_cnt
+        on date_value = date;
+    </select>
+
+    <select id="getTop10" resultType="com.sky.dto.GoodsSalesDTO">
+        with valid_order_detail as (select name, number
+                                    from order_detail
+                                    where order_id in (select id
+                                                       from orders
+                                                       where status = 5
+                                                         and date_format(order_time, '%Y-%m-%d') &gt;= #{begin}
+                                                         and date_format(order_time, '%Y-%m-%d') &lt;= #{end}))
+
+        select name, sum(number) as 'number'
+        from valid_order_detail
+        group by name
+        limit 10;
+    </select>
+
+    <select id="sumByMap" resultType="java.lang.Double">
+        select sum(amount) from orders
+        <where>
+            <if test="begin != null">
+                and order_time &gt; #{begin}
+            </if>
+            <if test="end != null">
+                and order_time &lt; #{end}
+            </if>
+            <if test="status != null">
+                and status = #{status}
+            </if>
+        </where>
+    </select>
+    <select id="countByMap" resultType="java.lang.Integer">
+        select count(id) from orders
+        <where>
+            <if test="begin != null">
+                and order_time &gt; #{begin}
+            </if>
+            <if test="end != null">
+                and order_time &lt; #{end}
+            </if>
+            <if test="status != null">
+                and status = #{status}
+            </if>
         </where>
     </select>
 
