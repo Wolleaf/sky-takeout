@@ -4,24 +4,34 @@ import com.sky.dto.*;
 import com.sky.entity.Orders;
 import com.sky.mapper.OrderMapper;
 import com.sky.service.ReportService;
-import com.sky.vo.OrderReportVO;
-import com.sky.vo.SalesTop10ReportVO;
-import com.sky.vo.TurnoverReportVO;
-import com.sky.vo.UserReportVO;
+import com.sky.service.WorkspaceService;
+import com.sky.vo.*;
+import org.apache.poi.xssf.usermodel.XSSFRow;
+import org.apache.poi.xssf.usermodel.XSSFSheet;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import javax.servlet.ServletOutputStream;
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 
 @Service
 public class ReportServiceImpl implements ReportService {
 
     private OrderMapper orderMapper;
+    private WorkspaceService workspaceService;
 
     @Autowired
-    public ReportServiceImpl(OrderMapper orderMapper) {
+    public ReportServiceImpl(OrderMapper orderMapper, WorkspaceService workspaceService) {
         this.orderMapper = orderMapper;
+        this.workspaceService = workspaceService;
     }
 
     /**
@@ -131,5 +141,59 @@ public class ReportServiceImpl implements ReportService {
                 .nameList(nameList.toString())
                 .numberList(numberList.toString())
                 .build();
+    }
+
+    /**
+     * 导出运营数据报表
+     * @param response
+     */
+    @Override
+    public void exportBusinessData(HttpServletResponse response) {
+        try (
+                InputStream in = this.getClass().getResourceAsStream("/template/运营数据报表模板.xlsx");
+                XSSFWorkbook workbook = new XSSFWorkbook(in);
+                ServletOutputStream outputStream = response.getOutputStream();
+        )
+        {
+            // 查询概览数据
+            LocalDate begin = LocalDate.now().minusDays(30);
+            LocalDate end = LocalDate.now().minusDays(1);
+            BusinessDataVO businessData = workspaceService.getBusinessData(
+                    LocalDateTime.of(begin, LocalTime.MIN), LocalDateTime.of(end, LocalTime.MAX)
+            );
+            XSSFSheet sheet1 = workbook.getSheet("Sheet1");
+
+            XSSFRow row2 = sheet1.getRow(1);
+            row2.getCell(1).setCellValue(begin + "至" + end);
+
+            XSSFRow row4 = sheet1.getRow(3);
+            row4.getCell(2).setCellValue(businessData.getTurnover());
+            row4.getCell(4).setCellValue(businessData.getOrderCompletionRate());
+            row4.getCell(6).setCellValue(businessData.getNewUsers());
+            XSSFRow row5 = sheet1.getRow(4);
+            row5.getCell(2).setCellValue(businessData.getValidOrderCount());
+            row5.getCell(4).setCellValue(businessData.getUnitPrice());
+
+            // 填充明细数据
+            for (int i = 0; i < 30; ++i) {
+                LocalDate date = begin.plusDays(i);
+                BusinessDataVO businessDataOnDate = workspaceService.getBusinessData(
+                        LocalDateTime.of(date, LocalTime.MIN), LocalDateTime.of(date, LocalTime.MAX)
+                );
+                int rowNumber = 7 + i;
+                XSSFRow row = sheet1.getRow(rowNumber);
+                row.getCell(1).setCellValue(date.toString());
+                row.getCell(2).setCellValue(businessDataOnDate.getTurnover());
+                row.getCell(3).setCellValue(businessDataOnDate.getValidOrderCount());
+                row.getCell(4).setCellValue(businessDataOnDate.getOrderCompletionRate());
+                row.getCell(5).setCellValue(businessDataOnDate.getUnitPrice());
+                row.getCell(6).setCellValue(businessDataOnDate.getNewUsers());
+            }
+
+            workbook.write(outputStream);
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 }
