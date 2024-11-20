@@ -54,3 +54,8 @@ sky:
     secret: ${sky.wechat.secret}
     notify-url: ${sky.wechat.notify-url}
     refund-notify-url: ${sky.wechat.refund-notify-url}
+  shop:
+    address: ${sky.shop.address}
+    # 单位：m
+    service-distance: ${sky.shop.service-distance}
+    ak: ${sky.shop.ak}

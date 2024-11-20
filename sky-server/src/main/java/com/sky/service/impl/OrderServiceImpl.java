@@ -13,12 +13,14 @@ import com.sky.exception.OrderBusinessException;
 import com.sky.mapper.*;
 import com.sky.result.PageResult;
 import com.sky.service.OrderService;
+import com.sky.utils.BaiduMapUtil;
 import com.sky.utils.WeChatPayUtil;
 import com.sky.vo.OrderPaymentVO;
 import com.sky.vo.OrderStatisticsVO;
 import com.sky.vo.OrderSubmitVO;
 import com.sky.vo.OrderVO;
 import com.sky.websocket.WebSocketServer;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -32,29 +34,17 @@ import java.util.List;
 import java.util.Map;
 
 @Service
+@RequiredArgsConstructor
 public class OrderServiceImpl implements OrderService {
 
-    private OrderMapper orderMapper;
-    private OrderDetailMapper orderDetailMapper;
-    private AddressBookMapper addressBookMapper;
-    private ShoppingCartMapper shoppingCartMapper;
-    private WeChatPayUtil weChatPayUtil;
-    private UserMapper userMapper;
-    private WebSocketServer webSocketServer;
-
-    @Autowired
-    public OrderServiceImpl(OrderMapper orderMapper, AddressBookMapper addressBookMapper,
-                            OrderDetailMapper orderDetailMapper, ShoppingCartMapper shoppingCartMapper,
-                            WeChatPayUtil weChatPayUtil, UserMapper userMapper,
-                            WebSocketServer webSocketServer) {
-        this.orderMapper = orderMapper;
-        this.orderDetailMapper = orderDetailMapper;
-        this.addressBookMapper = addressBookMapper;
-        this.shoppingCartMapper = shoppingCartMapper;
-        this.weChatPayUtil = weChatPayUtil;
-        this.userMapper = userMapper;
-        this.webSocketServer = webSocketServer;
-    }
+    private final OrderMapper orderMapper;
+    private final OrderDetailMapper orderDetailMapper;
+    private final AddressBookMapper addressBookMapper;
+    private final ShoppingCartMapper shoppingCartMapper;
+    private final WeChatPayUtil weChatPayUtil;
+    private final UserMapper userMapper;
+    private final WebSocketServer webSocketServer;
+    private final BaiduMapUtil baiduMapUtil;
 
     /**
      * 用户下单
@@ -73,6 +63,11 @@ public class OrderServiceImpl implements OrderService {
         // 获取地址
         Long addressBookId = ordersSubmitDTO.getAddressBookId();
         AddressBook addressBook = addressBookMapper.getById(addressBookId);
+        String address = addressBook.getProvinceName() + addressBook.getCityName() + addressBook.getDistrictName() + addressBook.getDetail();
+        // 判断是否在营业范围内
+        if (!baiduMapUtil.isInServiceArea(address)) {
+            throw new OrderBusinessException(MessageConstant.NOT_SUPPORT_DELIVERY_ADDRESS);
+        }
 
         // 封装订单数据
         Orders orders = new Orders();
